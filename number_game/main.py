@@ -22,7 +22,6 @@ STEP = 600
 
 class number_game:
     def __init__(self):
-
         self.first_digit = np.random.randint(0,10)
         self.second_digit = np.random.randint(0,10)
 
