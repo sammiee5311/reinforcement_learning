@@ -7,17 +7,17 @@ import collections
 style.use('ggplot')
 
 EPISODES = 15000
-MOVE_PENALTY = 1
+MOVE_PENALTY = -1
 ANSWER_REWARD = 50
 HALF_REWARD = 20
 epsilon = 0.9
-EPS_DECAY = 0.9998
+EPS_DECAY = 0.99998
 SHOW_EVERY = 500
-MIN_VALUES = -300
+MIN_VALUES = -200
 
 LEARNING_RATE = 0.001
 DISCOUNT = 0.95
-STEP = 600
+STEP = 200
 
 
 class number_game:
