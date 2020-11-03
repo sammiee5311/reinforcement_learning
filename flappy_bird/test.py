@@ -6,12 +6,12 @@ import pygame
 class game:
     def __init__(self):
         pygame.init()
-        self.SCREEN = pygame.display.set_mode((500, 750))  # Setting the display
+        self.SCREEN = pygame.display.set_mode((500, 750))
         self.startFont = pygame.font.Font('freesansbold.ttf', 32)
 
-        self.BACKGROUND_IMAGE = pygame.image.load('background.jpg')
+        self.BACKGROUND_IMAGE = pygame.image.load('./img/background.jpg')
 
-        self.BIRD_IMAGE = pygame.image.load('bird1.png')
+        self.BIRD_IMAGE = pygame.image.load('./img/bird1.png')
         self.bird_x = 50
         self.bird_y = 300
         self.bird_y_change = 0
