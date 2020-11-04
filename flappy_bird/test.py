@@ -7,14 +7,12 @@ class game:
     def __init__(self):
         pygame.init()
         self.SCREEN = pygame.display.set_mode((500, 750))
-        self.startFont = pygame.font.Font('freesansbold.ttf', 32)
 
-        self.BACKGROUND_IMAGE = pygame.image.load('./img/background.jpg')
+        self.BACKGROUND_IMAGE = pygame.image.load('background.jpg')
 
-        self.BIRD_IMAGE = pygame.image.load('./img/bird1.png')
+        self.BIRD_IMAGE = pygame.image.load('bird1.png')
         self.bird_x = 50
         self.bird_y = 300
-        self.bird_y_change = 0
 
         self.OBSTACLE_WIDTH = 70
         self.OBSTACLE_HEIGHT = np.random.randint(200, 400)
@@ -38,47 +36,52 @@ class game:
 
     def action(self, choice):
         if choice == 1:
-            self.bird_y_change = -5
+            self.bird_y += -5
         else:
-            self.bird_y_change = 4
+            self.bird_y += 4
+
+        if flappy.bird_y <= 0:
+            flappy.bird_y = 0
+        if flappy.bird_y >= 571:
+            flappy.bird_y = 571
 
 
 with open('q_table4.pickle', "rb") as file:
     q_table = pickle.load(file)
 
 
-while True:
-    flappy = game()
-    while True:
-        flappy.SCREEN.fill((0, 0, 0))
-        flappy.SCREEN.blit(flappy.BACKGROUND_IMAGE, (0, 0))
+flappy = game()
+is_running = True
 
-        UPPER = flappy.OBSTACLE_HEIGHT - flappy.bird_y
-        LOWER = (flappy.OBSTACLE_HEIGHT + 160) - (flappy.bird_y + 64)
+while is_running:
+    flappy.SCREEN.fill((0, 0, 0))
+    flappy.SCREEN.blit(flappy.BACKGROUND_IMAGE, (0, 0))
 
-        obs = (UPPER, LOWER)
+    UPPER = flappy.OBSTACLE_HEIGHT - flappy.bird_y
+    LOWER = (flappy.OBSTACLE_HEIGHT + 160) - (flappy.bird_y + 64)
 
-        flappy.display_obstacle(flappy.OBSTACLE_HEIGHT)
-        flappy.display_bird(flappy.bird_x, flappy.bird_y)
+    obs = (UPPER, LOWER)
 
-        pygame.display.update()
+    flappy.display_obstacle(flappy.OBSTACLE_HEIGHT)
+    flappy.display_bird(flappy.bird_x, flappy.bird_y)
 
-        choice = np.argmax(q_table[obs])
+    choice = np.argmax(q_table[obs])
 
-        flappy.action(choice)
+    flappy.action(choice)
 
-        flappy.bird_y += flappy.bird_y_change
-        if flappy.bird_y <= 0:
-            flappy.bird_y = 0
-        if flappy.bird_y >= 571:
-            flappy.bird_y = 571
+    flappy.obstacle_x += flappy.OBSTACE_X_CHANGE
 
-        flappy.obstacle_x += flappy.OBSTACE_X_CHANGE
-        collision = flappy.collision_detection(flappy.obstacle_x, flappy.OBSTACLE_HEIGHT, flappy.bird_y,
-                                               flappy.OBSTACLE_HEIGHT + 160)
+    collision = flappy.collision_detection(flappy.obstacle_x, flappy.OBSTACLE_HEIGHT, flappy.bird_y,
+                                           flappy.OBSTACLE_HEIGHT + 160)
 
-        if collision:
-            break
-        if flappy.obstacle_x <= -10:
-            flappy.obstacle_x = 500
-            flappy.OBSTACLE_HEIGHT = np.random.randint(200, 400)
+    if collision:
+        break
+    if flappy.obstacle_x <= -10:
+        flappy.obstacle_x = 500
+        flappy.OBSTACLE_HEIGHT = np.random.randint(200, 400)
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            is_running = False
+
+    pygame.display.update()
