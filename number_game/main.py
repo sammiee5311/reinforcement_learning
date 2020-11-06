@@ -9,11 +9,10 @@ style.use('ggplot')
 EPISODES = 15000
 MOVE_PENALTY = -1
 ANSWER_REWARD = 50
-HALF_REWARD = 20
 epsilon = 0.9
 EPS_DECAY = 0.99998
 SHOW_EVERY = 500
-MIN_VALUES = -200
+LIMIT_VALUES = -200
 
 LEARNING_RATE = 0.001
 DISCOUNT = 0.95
@@ -114,7 +113,7 @@ for episode in range(EPISODES):
             print(player.first_digit,answer.first_digit,player.second_digit,answer.second_digit)
 
         episode_reward += reward
-        if reward == ANSWER_REWARD or reward <= MIN_VALUES:
+        if reward == ANSWER_REWARD or reward <= LIMIT_VALUES:
             break
 
     episode_rewards.append(episode_reward)
