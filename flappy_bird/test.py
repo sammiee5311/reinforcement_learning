@@ -51,6 +51,7 @@ with open('q_table4.pickle', "rb") as file:
 
 
 flappy = game()
+
 is_running = True
 
 while is_running:
