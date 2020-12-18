@@ -1,4 +1,7 @@
 # flappy bird
+
+Descrition is in the link below.
+
 https://sammiee5311.github.io/q%20learning/q_learning-flappy_bird/
 
 <center> <img src="img/play_2.gif"> </center>
