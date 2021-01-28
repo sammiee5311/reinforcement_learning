@@ -1,9 +1,9 @@
-# snake
+# Snake
 
 This is a simple snake game by using pygame.
 
-## image
+## Image
 
-## episode reward
+## Episode reward
 
-<center> <img src="imamges/episode_reward.png"> </center>
+<center> <img src="images/episode_reward.png"> </center>
