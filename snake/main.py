@@ -68,10 +68,6 @@ q_table = collections.defaultdict(list)
 
 episode_rewards = []
 
-white = (255, 255, 255)
-black = (0, 0, 0)
-red = (255, 0, 0)
-
 for x in range(-300, 301):
     for y in range(-500, 501):
         q_table[(x, y)] = [0 for _ in range(4)]
