@@ -1,144 +1,168 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import pickle
 from matplotlib import style
+import torch
 import collections
-import pygame
+import random
 
-EPISODES = 100000
-COLLISION_PENALTY = 850
+#########################################
+from game import Snake, Direction, Point
+from model import Model, Trainer
+#########################################
+
+MAX_MEMORY = 100000
+EPISODES = 1000
+BATCH_SIZE = 1000
+COLLISION_PENALTY = 50
 POINT_REWARD = 50
-ALIVE_REWARD = 1
-epsilon = 0.9
-EPS_DECAY = 0.99998
-SHOW_EVERY = 1000
+SHOW_EVERY = 10
+STEP = 1800
 
-LEARNING_RATE = 0.3
-DISCOUNT = 0.95
-STEP = 1000
+BLOCK = 10
 
 
-class Snake:
+class Agent:
     def __init__(self):
-        # pygame.init()
+        self.n_games = 0
+        self.epsilon = 0.9
+        self.DISCOUNT = 0.95
+        self.LEARNING_RATE = 0.01
+        self.EPS_DECAY = 0.99998
+        self.q_table = collections.deque(maxlen=MAX_MEMORY)
+        self.model = Model(11, 256, 3)
+        self.trainer = Trainer(self.model, self.LEARNING_RATE, self.DISCOUNT)
 
-        # GAME
-        self.WIDTH = 300
-        self.HEIGHT = 500
-        # self.SCREEN = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
-        self.score = 0
+    def get_state(self, game):
+        head = game.snake_body[0]
+        point_l = Point(head.x - BLOCK, head.y)
+        point_r = Point(head.x + BLOCK, head.y)
+        point_u = Point(head.x, head.y - BLOCK)
+        point_d = Point(head.x, head.y + BLOCK)
 
-        # SNAKE
-        self.snake_x = self.WIDTH // 2
-        self.snake_y = self.HEIGHT // 2
-        self.snake_body = collections.deque([(self.snake_x, self.snake_y)])
+        dir_l = game.direction == Direction.LEFT
+        dir_r = game.direction == Direction.RIGHT
+        dir_u = game.direction == Direction.UP
+        dir_d = game.direction == Direction.DOWN
 
-        # FRUIT
-        self.fruit_x = (np.random.randint(10, self.WIDTH) // 10) * 10
-        self.fruit_y = (np.random.randint(10, self.HEIGHT) // 10) * 10
+        state = [
+            (dir_r and game.is_collision(point_r)) or
+            (dir_l and game.is_collision(point_l)) or
+            (dir_u and game.is_collision(point_u)) or
+            (dir_d and game.is_collision(point_d)),
 
-    def __sub__(self, other):
-        x = self.snake_x - other.x
-        y = self.snake_y - other.y
-        return (x, y)
+            (dir_u and game.is_collision(point_r)) or
+            (dir_d and game.is_collision(point_l)) or
+            (dir_l and game.is_collision(point_u)) or
+            (dir_r and game.is_collision(point_d)),
 
-    # Check if the coordinates are in bound.
-    def is_collision(self):
-        if 0 < self.snake_x <= self.WIDTH and 0 < self.snake_y <= self.HEIGHT or (
-        self.snake_x, self.snake_y) in self.snake_body:
-            return False
-        return True
+            (dir_d and game.is_collision(point_r)) or
+            (dir_u and game.is_collision(point_l)) or
+            (dir_r and game.is_collision(point_u)) or
+            (dir_l and game.is_collision(point_d)),
 
-    def action(self, direction):
-        if direction == 0:
-            self.move(-10, 0)
-        elif direction == 1:
-            self.move(10, 0)
-        elif direction == 2:
-            self.move(0, -10)
+            dir_l,
+            dir_r,
+            dir_u,
+            dir_d,
+
+            game.fruit.x < game.snake_head.x,
+            game.fruit.x > game.snake_head.x,
+            game.fruit.y < game.snake_head.y,
+            game.fruit.y > game.snake_head.y
+        ]
+
+        return np.array(state, dtype=int)
+
+    def remember(self, state, action, reward, next_state, game_over):
+        self.q_table.append((state, action, reward, next_state, game_over))
+
+    def train_long_memory(self):
+        if len(self.q_table) > BATCH_SIZE:
+            mini_sample = random.sample(self.q_table, BATCH_SIZE)
         else:
-            self.move(0, 10)
+            mini_sample = self.q_table
 
-    def move(self, x, y):
-        self.snake_x += x
-        self.snake_y += y
+        states, actions, rewards, next_states, game_overs = zip(*mini_sample)
+        self.trainer.train_step(states, actions, rewards, next_states, game_overs)
 
+    def train_short_memory(self, state, action, reward, next_state, game_over):
+        self.trainer.train_step(state, action, reward, next_state, game_over)
 
-q_table = collections.defaultdict(list)
+    def get_action(self, state):
+        final_choice = [0, 0, 0]
 
-episode_rewards = []
-
-white = (255, 255, 255)
-black = (0, 0, 0)
-red = (255, 0, 0)
-
-for x in range(-300, 301):
-    for y in range(-500, 501):
-        q_table[(x, y)] = [0 for _ in range(4)]
-
-for episode in range(EPISODES):
-    if episode % SHOW_EVERY == 0:
-        print("# : %d, epsilon : %f" % (episode, epsilon))
-        print(f'{SHOW_EVERY} ep mean {np.mean(episode_rewards[-SHOW_EVERY:])}')
-
-    snake = Snake()
-    episode_reward = 0
-
-    for _ in range(STEP):
-        reward = 0
-        new_x = snake.snake_x - snake.fruit_x
-        new_y = snake.snake_y - snake.fruit_y
-        obs = (new_x, new_y)
-
-        if np.random.random() > epsilon:
-            choice = np.argmax(q_table[obs])
+        if np.random.random() > self.epsilon:
+            cur_state = torch.tensor(state, dtype=torch.float)
+            prediction = self.model(cur_state)
+            choice = torch.argmax(prediction).item()
+            final_choice[choice] = 1
         else:
-            choice = np.random.randint(0, 4)
+            choice = np.random.randint(0, 3)
+            final_choice[choice] = 1
 
-        snake.action(choice)
+        return final_choice
 
-        collision = snake.is_collision()
 
-        snake.snake_body.popleft()
-        snake.snake_body.append((snake.snake_x, snake.snake_y))
+def train():
+    agent = Agent()
+    episode_rewards = []
+    record = 0
+    for episode in range(EPISODES):
+        game_over = False
+        episode_reward = 0
+        snake = Snake()
 
-        if collision:
-            reward = -COLLISION_PENALTY
-        else:
-            if snake.snake_x == snake.fruit_x and snake.snake_y == snake.fruit_y:
-                while snake.snake_x == snake.fruit_x and snake.snake_y == snake.fruit_y:
-                    snake.fruit_x = (np.random.randint(10, snake.WIDTH) // 10) * 10
-                    snake.fruit_y = (np.random.randint(10, snake.HEIGHT) // 10) * 10
-                snake.snake_body.append((snake.snake_x, snake.snake_y))
-                reward = POINT_REWARD
-            reward += ALIVE_REWARD
+        if episode % SHOW_EVERY == 0:
+            print("# : %d, epsilon : %f, score : %d" % (episode, agent.epsilon, record))
+            print(f'{SHOW_EVERY} ep mean {np.mean(episode_rewards[-SHOW_EVERY:])}')
 
-        new_x = snake.snake_x - snake.fruit_x
-        new_y = snake.snake_y - snake.fruit_y
-        new_obs = (new_x, new_y)
-        max_future_q = np.max(q_table[new_obs])
-        current_q = q_table[obs][choice]
+        for _ in range(STEP):
+            reward = 0
+            old_state = agent.get_state(snake)
+            final_move = agent.get_action(old_state)
+            snake.action(final_move)
+            collision = snake.is_collision(snake.snake_head)
+            snake.snake_body.append(snake.snake_head)
 
-        if reward == -COLLISION_PENALTY:
-            new_q = -COLLISION_PENALTY
-        else:
-            new_q = (1 - LEARNING_RATE) * current_q + LEARNING_RATE * (reward + DISCOUNT * max_future_q)
+            if collision:
+                reward = -COLLISION_PENALTY
+                game_over = True
+            else:
+                if snake.snake_head == snake.fruit:
+                    while snake.snake_head == snake.fruit:
+                        snake.fruit = Point((np.random.randint(10, snake.WIDTH) // 10) * 10,
+                                           (np.random.randint(10, snake.HEIGHT) // 10) * 10)
+                    snake.snake_body.append(snake.snake_head)
+                    snake.score += 1
+                    reward = POINT_REWARD
+                else:
+                    snake.snake_body.popleft()
 
-        q_table[obs][choice] = new_q
-        episode_reward += reward
+            new_state = agent.get_state(snake)
 
-        if collision:
-            break
+            agent.train_short_memory(old_state, final_move, reward, new_state, game_over)
 
-    episode_rewards.append(episode_reward)
-    epsilon *= EPS_DECAY
+            agent.remember(old_state, final_move, reward, new_state, game_over)
 
-moving_avg = np.convolve(episode_rewards, np.ones((SHOW_EVERY,)) / SHOW_EVERY, mode='valid')
+            episode_reward += reward
 
-plt.plot([i for i in range(len(moving_avg))], moving_avg, color='indigo')
-plt.ylabel("reward on %d" % SHOW_EVERY)
-plt.xlabel("episode #")
-plt.show()
+            if game_over:
+                agent.n_games += 1
+                agent.train_long_memory()
+                episode_rewards.append(episode_reward)
+                agent.epsilon *= agent.EPS_DECAY
+                if snake.score > record:
+                    record = snake.score
+                    agent.model.save()
+                break
 
-with open("q_table.pickle", "wb") as file:
-    pickle.dump(q_table, file)
+    moving_avg = np.convolve(episode_rewards, np.ones((SHOW_EVERY,)) / SHOW_EVERY, mode='valid')
+
+    plt.plot([i for i in range(len(moving_avg))], moving_avg, color='indigo')
+    plt.ylabel("reward on %d" % SHOW_EVERY)
+    plt.xlabel("episode #")
+    plt.show()
+
+
+if __name__ == '__main__':
+    train()
