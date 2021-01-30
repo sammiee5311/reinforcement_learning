@@ -82,11 +82,17 @@ class Agent:
         else:
             mini_sample = self.q_table
 
+<<<<<<< HEAD
         states, actions, rewards, next_states, game_overs = zip(*mini_sample)
         self.trainer.train_step(states, actions, rewards, next_states, game_overs)
 
     def train_short_memory(self, state, action, reward, next_state, game_over):
         self.trainer.train_step(state, action, reward, next_state, game_over)
+=======
+for x in range(-300, 301):
+    for y in range(-500, 501):
+        q_table[(x, y)] = [0 for _ in range(4)]
+>>>>>>> cd98a908dff665b7082ed2bb7dcf2e8615d71f07
 
     def get_action(self, state):
         final_choice = [0, 0, 0]
@@ -97,6 +103,7 @@ class Agent:
             choice = torch.argmax(prediction).item()
             final_choice[choice] = 1
         else:
+<<<<<<< HEAD
             choice = np.random.randint(0, 3)
             final_choice[choice] = 1
 
@@ -166,3 +173,54 @@ def train():
 
 if __name__ == '__main__':
     train()
+=======
+            choice = np.random.randint(0, 4)
+
+        snake.action(choice)
+
+        collision = snake.is_collision()
+
+        snake.snake_body.popleft()
+        snake.snake_body.append((snake.snake_x, snake.snake_y))
+
+        if collision:
+            reward = -COLLISION_PENALTY
+        else:
+            if snake.snake_x == snake.fruit_x and snake.snake_y == snake.fruit_y:
+                while snake.snake_x == snake.fruit_x and snake.snake_y == snake.fruit_y:
+                    snake.fruit_x = (np.random.randint(10, snake.WIDTH) // 10) * 10
+                    snake.fruit_y = (np.random.randint(10, snake.HEIGHT) // 10) * 10
+                snake.snake_body.append((snake.snake_x, snake.snake_y))
+                reward = POINT_REWARD
+            reward += ALIVE_REWARD
+
+        new_x = snake.snake_x - snake.fruit_x
+        new_y = snake.snake_y - snake.fruit_y
+        new_obs = (new_x, new_y)
+        max_future_q = np.max(q_table[new_obs])
+        current_q = q_table[obs][choice]
+
+        if reward == -COLLISION_PENALTY:
+            new_q = -COLLISION_PENALTY
+        else:
+            new_q = (1 - LEARNING_RATE) * current_q + LEARNING_RATE * (reward + DISCOUNT * max_future_q)
+
+        q_table[obs][choice] = new_q
+        episode_reward += reward
+
+        if collision:
+            break
+
+    episode_rewards.append(episode_reward)
+    epsilon *= EPS_DECAY
+
+moving_avg = np.convolve(episode_rewards, np.ones((SHOW_EVERY,)) / SHOW_EVERY, mode='valid')
+
+plt.plot([i for i in range(len(moving_avg))], moving_avg, color='indigo')
+plt.ylabel("reward on %d" % SHOW_EVERY)
+plt.xlabel("episode #")
+plt.show()
+
+with open("q_table.pickle", "wb") as file:
+    pickle.dump(q_table, file)
+>>>>>>> cd98a908dff665b7082ed2bb7dcf2e8615d71f07

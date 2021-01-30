@@ -1,11 +1,11 @@
-# flappy bird
+# Flappy bird
 
 Descrition is in the link below.
 
 https://sammiee5311.github.io/q%20learning/q_learning-flappy_bird/
 
 
-## image
+## Image
 
 <center> <img src="img/play_2.gif"> </center>
 
