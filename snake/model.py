@@ -26,13 +26,17 @@ class Model(nn.Module):
         file_PATH = os.path.join(PATH, file_name)
         torch.save(self.state_dict(), file_PATH)
 
+    def load(self):
+        model = torch.load(self.state_dict(), './model/model.pth')
+        return model
+
 
 class Trainer:
     def __init__(self, model, LEARNING_RATE, DISCOUNT):
         self.LEARNING_RATE = LEARNING_RATE
         self.DISCOUNT = DISCOUNT
         self.model = model
-        self.optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+        self.optimizer = optim.Adam(model.parameters(), lr=self.LEARNING_RATE)
         self.loss = nn.MSELoss()
 
     def train_step(self, state, action, reward, next_state, game_over):
@@ -54,9 +58,9 @@ class Trainer:
         for idx in range(len(game_over)):
             new_obs = reward[idx]
             if not game_over[idx]:
-                new_obs = reward[idx] + self.DISCOUNT * torch.max(self.model(next_state))
+                new_obs = reward[idx] + self.DISCOUNT * torch.max(self.model(next_state[idx]))
 
-            target[idx][torch.argmax(action).item()] = new_obs
+            target[idx][torch.argmax(action[idx]).item()] = new_obs
 
         self.optimizer.zero_grad()
         loss = self.loss(target, pred)
