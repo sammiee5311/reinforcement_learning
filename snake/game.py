@@ -29,7 +29,6 @@ class Snake:
         # SNAKE
         self.snake_head = Point(self.WIDTH / 2,self.HEIGHT / 2)
         self.snake_body = [self.snake_head]
-        # self.snake_body.append(self.snake_head)
         self.direction = Direction.RIGHT
 
         # FRUIT
