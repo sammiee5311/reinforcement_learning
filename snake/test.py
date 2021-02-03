@@ -67,7 +67,7 @@ class Test:
         return final_choice
 
 
-def train():
+def test():
     snake = Snake()
     test = Test()
     is_running = True
@@ -98,5 +98,5 @@ def train():
 
 
 if __name__ == '__main__':
-    train()
+    test()
 
